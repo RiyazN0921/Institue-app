@@ -1,66 +1,33 @@
-const Student = require('../models/student');
-const Course = require('../models/course');
+// controllers/studentController.js
+const Student = require('../models/Student');
 
-// Controller Functions
-const getStudentEnrolledCourses = async (req, res) => {
-  const studentId = req.params.id;
-
+// Create a new student
+exports.createStudent = async (req, res) => {
   try {
-    const student = await Student.findById(studentId).populate('enrolledCourses');
-    if (student) {
-      res.json(student.enrolledCourses);
-    } else {
-      res.status(404).json({ error: 'Student not found' });
-    }
+    const newStudent = new Student(req.body);
+    const savedStudent = await newStudent.save();
+    res.status(201).json(savedStudent);
   } catch (error) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
-const markCourseAsCompleted = async (req, res) => {
-    const studentId = req.params.studentId;
-    const courseId = req.params.courseId;
-  
-    try {
-      const student = await Student.findById(studentId);
-      if (!student) {
-        return res.status(404).json({ error: 'Student not found' });
-      }
-  
-      const course = await Course.findById(courseId);
-      if (!course) {
-        return res.status(404).json({ error: 'Course not found' });
-      }
-  
-      if (!student.enrolledCourses.includes(courseId)) {
-        return res.status(404).json({ error: 'Course not found in student\'s enrolled courses' });
-      }
-  
-      const courseIndex = student.enrolledCourses.findIndex(c => c._id.equals(courseId));
-      if (courseIndex !== -1) {
-        student.enrolledCourses[courseIndex].completed = true;
-      }
-  
-      await student.save();
-      res.json({ message: 'Course marked as completed' });
-    } catch (error) {
-      res.status(500).json({ error: 'Internal Server Error' });
-    }
-  };
-const getAllStudents = async (req, res) => {
+// Get all students
+exports.getAllStudents = async (req, res) => {
   try {
-    const students = await Student.find();
+    const students = await Student.find().populate('enrolledCourses');
     res.json(students);
   } catch (error) {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
-const getStudentById = async (req, res) => {
+// Get a specific student by ID
+exports.getStudentById = async (req, res) => {
   const studentId = req.params.id;
 
   try {
-    const student = await Student.findById(studentId);
+    const student = await Student.findById(studentId).populate('enrolledCourses');
     if (student) {
       res.json(student);
     } else {
@@ -71,28 +38,12 @@ const getStudentById = async (req, res) => {
   }
 };
 
-const createStudent = async (req, res) => {
-  const { name, enrolledCourses } = req.body;
-
-  const newStudent = new Student({
-    name,
-    enrolledCourses,
-  });
-
-  try {
-    const savedStudent = await newStudent.save();
-    res.status(201).json(savedStudent);
-  } catch (error) {
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-};
-
-const updateStudent = async (req, res) => {
+// Update a specific student by ID
+exports.updateStudent = async (req, res) => {
   const studentId = req.params.id;
-  const updateData = req.body;
 
   try {
-    const updatedStudent = await Student.findByIdAndUpdate(studentId, updateData, { new: true });
+    const updatedStudent = await Student.findByIdAndUpdate(studentId, req.body, { new: true });
     if (updatedStudent) {
       res.json(updatedStudent);
     } else {
@@ -103,7 +54,8 @@ const updateStudent = async (req, res) => {
   }
 };
 
-const deleteStudent = async (req, res) => {
+// Delete a specific student by ID
+exports.deleteStudent = async (req, res) => {
   const studentId = req.params.id;
 
   try {
@@ -117,5 +69,3 @@ const deleteStudent = async (req, res) => {
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
-
-module.exports = { getStudentEnrolledCourses, markCourseAsCompleted, getAllStudents, getStudentById, createStudent, updateStudent, deleteStudent };

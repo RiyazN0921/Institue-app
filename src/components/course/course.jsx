@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import apiService from '../../apiservice/apiservice';
 // Create Course Component
+
 const CreateCourse = () => {
     const [formData, setFormData] = useState({
         name: '',
@@ -46,8 +47,10 @@ const CreateCourse = () => {
         const courseData = new FormData();
         for (const key in formData) {
             if (key === 'prerequisites' || key === 'syllabus') {
-                // Handle array fields
-                courseData.append(key, JSON.stringify(formData[key]));
+                // Handle array fields by appending each item separately
+                formData[key].forEach((item, index) => {
+                    courseData.append(`${key}[${index}]`, item);
+                });
             } else {
                 courseData.append(key, formData[key]);
             }
@@ -56,6 +59,11 @@ const CreateCourse = () => {
         try {
             const response = await apiService.createCourse(courseData);
             console.log('New course created:', response);
+
+            // Display all fields in the response
+            alert(
+                `Course Created Successfully!\n${JSON.stringify(response.data, null, 2)}`
+            );
         } catch (error) {
             console.error('Error creating course:', error);
         }
@@ -181,8 +189,10 @@ const CourseDetails = ({ match }) => {
     );
 };
 
-// Update Course by ID Component
+//update
 const UpdateCourse = ({ match }) => {
+    const courseId = match.params.id;
+
     const [formData, setFormData] = useState({
         name: '',
         instructor: '',
@@ -196,8 +206,6 @@ const UpdateCourse = ({ match }) => {
         student: '',
         thumbnail: null,
     });
-
-    const courseId = match.params.id;
 
     useEffect(() => {
         const fetchCourse = async () => {
@@ -220,6 +228,14 @@ const UpdateCourse = ({ match }) => {
         });
     };
 
+    const handleArrayChange = (e) => {
+        const arrayValue = e.target.value.split('\n').map((item) => item.trim());
+        setFormData({
+            ...formData,
+            [e.target.name]: arrayValue,
+        });
+    };
+
     const handleThumbnailChange = (e) => {
         setFormData({
             ...formData,
@@ -231,17 +247,15 @@ const UpdateCourse = ({ match }) => {
         e.preventDefault();
 
         const courseData = new FormData();
-        courseData.append('name', formData.name);
-        courseData.append('instructor', formData.instructor);
-        courseData.append('description', formData.description);
-        courseData.append('status', formData.status);
-        courseData.append('duration', formData.duration);
-        courseData.append('schedule', formData.schedule);
-        courseData.append('location', formData.location);
-        courseData.append('prerequisites', JSON.stringify(formData.prerequisites));
-        courseData.append('syllabus', JSON.stringify(formData.syllabus));
-        courseData.append('student', formData.student);
-        courseData.append('thumbnail', formData.thumbnail);
+        for (const key in formData) {
+            if (key === 'prerequisites' || key === 'syllabus') {
+                formData[key].forEach((item, index) => {
+                    courseData.append(`${key}[${index}]`, item);
+                });
+            } else {
+                courseData.append(key, formData[key]);
+            }
+        }
 
         try {
             const response = await apiService.updateCourse(courseId, courseData);
@@ -257,13 +271,41 @@ const UpdateCourse = ({ match }) => {
         <div>
             <h2>Update Course</h2>
             <form onSubmit={handleSubmit}>
-                {/* Add input fields for course information */}
                 <label>Name:</label>
                 <input type="text" name="name" value={formData.name} onChange={handleChange} required />
 
-                {/* ... Add other input fields for course information ... */}
+                <label>Instructor:</label>
+                <input type="text" name="instructor" value={formData.instructor} onChange={handleChange} />
 
-                {/* Add input field for the thumbnail */}
+                <label>Description:</label>
+                <textarea name="description" value={formData.description} onChange={handleChange}></textarea>
+
+                <label>Status:</label>
+                <input type="text" name="status" value={formData.status} onChange={handleChange} />
+
+                <label>Duration:</label>
+                <input type="text" name="duration" value={formData.duration} onChange={handleChange} />
+
+                <label>Schedule:</label>
+                <input type="text" name="schedule" value={formData.schedule} onChange={handleChange} />
+
+                <label>Location:</label>
+                <input type="text" name="location" value={formData.location} onChange={handleChange} />
+
+                <label>Prerequisites:</label>
+                <textarea
+                    name="prerequisites"
+                    value={formData.prerequisites.join('\n')}
+                    onChange={handleArrayChange}
+                ></textarea>
+
+                <label>Syllabus:</label>
+                <textarea
+                    name="syllabus"
+                    value={formData.syllabus.join('\n')}
+                    onChange={handleArrayChange}
+                ></textarea>
+
                 <label>Thumbnail:</label>
                 <input type="file" name="thumbnail" onChange={handleThumbnailChange} required />
 
@@ -272,6 +314,8 @@ const UpdateCourse = ({ match }) => {
         </div>
     );
 };
+
+
 
 // Delete Course by ID Component
 const DeleteCourse = ({ match }) => {

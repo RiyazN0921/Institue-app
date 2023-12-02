@@ -8,7 +8,7 @@ const courseSchema = new mongoose.Schema({
   duration: String,
   schedule: String,
   thumbnail: {
-    data: Buffer,  
+    type: String,
     contentType: String
   },
   location: String,

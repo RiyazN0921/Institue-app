@@ -4,9 +4,6 @@ const fs = require('fs');
 
 // Create a new course
 exports.createCourse = async (req, res) => {
-  console.log('req.body', req.body);
-  console.log('req.file', req.file);
-
   try {
     const {
       name,
@@ -20,14 +17,9 @@ exports.createCourse = async (req, res) => {
       syllabus,
       student,
     } = req.body;
-
-    // Assuming Student is a reference to the User model
-    const studentId = student || null; // Set to null if it's an empty string
-
-    const thumbnail = {
-      data: req.file.buffer.toString('base64'),
-      contentType: req.file.mimetype,
-    };
+    const studentId = student || null; 
+    const thumbnailData = req.file.buffer;
+    const base64Thumbnail = thumbnailData.toString('base64');
 
     const newCourse = new Course({
       name,
@@ -40,13 +32,10 @@ exports.createCourse = async (req, res) => {
       prerequisites,
       syllabus,
       student: studentId,
-      thumbnail,
+      thumbnail: `data:${req.file.mimetype};base64,${base64Thumbnail}`,
     });
-
+    console.log(thumbnail)
     const savedCourse = await newCourse.save();
-
-    // Convert the thumbnail data to a Base64-encoded data URL
-    savedCourse.thumbnail.data = `data:${savedCourse.thumbnail.contentType};base64,${savedCourse.thumbnail.data}`;
 
     res.status(201).json(savedCourse);
   } catch (error) {
@@ -58,16 +47,11 @@ exports.createCourse = async (req, res) => {
 // Get all courses
 exports.getAllCourses = async (req, res) => {
   try {
-    const courses = await Course.find().populate('Student').select('-thumbnail.data'); // Exclude binary data from the thumbnail
+    const courses = await Course.find()
 
-    // Convert thumbnail data to Base64-encoded data URL for each course
-    const coursesWithBase64Thumbnail = courses.map(course => ({
-      ...course._doc,
-      thumbnail: `data:${course.thumbnail.contentType};base64,${course.thumbnail.data}`,
-    }));
-
-    res.json(coursesWithBase64Thumbnail);
+    res.json(courses);
   } catch (error) {
+    console.error('Error fetching courses:', error);  // Log the error for debugging
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
@@ -100,11 +84,22 @@ exports.updateCourse = async (req, res) => {
   const courseId = req.params.id;
 
   try {
-    const { name, instructor, description, status, duration, schedule, location, prerequisites, syllabus, student } = req.body;
-    const thumbnail = {
-      data: fs.readFileSync(req.file.path),
-      contentType: req.file.mimetype
-    };
+    const {
+      name,
+      instructor,
+      description,
+      status,
+      duration,
+      schedule,
+      location,
+      prerequisites,
+      syllabus,
+      student,
+    } = req.body;
+
+    const studentId = student || null;
+    const thumbnailData = fs.readFileSync(req.file.path);
+    const base64Thumbnail = thumbnailData.toString('base64');
 
     const updatedCourse = await Course.findByIdAndUpdate(
       courseId,
@@ -115,21 +110,24 @@ exports.updateCourse = async (req, res) => {
         status,
         duration,
         schedule,
-        thumbnail,
         location,
         prerequisites,
         syllabus,
-        Student: student
+        student: studentId,
+        thumbnail: `data:${req.file.mimetype};base64,${base64Thumbnail}`,
       },
       { new: true }
     );
 
     if (updatedCourse) {
+      // Delete the temporary file after reading its content
+      fs.unlinkSync(req.file.path);
       res.json(updatedCourse);
     } else {
       res.status(404).json({ error: 'Course not found' });
     }
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
